@@ -1,0 +1,28 @@
+{
+  "name": "hls-proxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "set DEBUG=express-http-proxy & nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-http-proxy": "^2.0.0",
+    "m3u8-parser": "^7.1.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-plugin-jest": "^28.8.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.3"
+  }
+}

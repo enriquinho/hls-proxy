@@ -1,0 +1,14 @@
+{
+  "env": {
+    "node": true,
+    "jest": true
+  },
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 2020
+  },
+  "rules": {
+    "no-undef": "error"
+  },
+  "plugins": ["jest"]
+}
