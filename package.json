@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "set DEBUG=express-http-proxy & nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "engines": {
     "node": ">=20"
@@ -20,9 +20,17 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "eslint": "^8.56.0",
     "eslint-plugin-jest": "^28.8.0",
     "jest": "^29.7.0",
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.0.3",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "transform": {},
+    "testPathIgnorePatterns": [
+      "./node_modules/"
+    ]
   }
 }

@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { addRequests } from './src/requests.js'
+import { addRequests } from './src/proxy/requests.js'
 
 const app = express()
 
