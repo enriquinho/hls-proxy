@@ -2,7 +2,7 @@ import express from 'express'
 import request from 'supertest'
 
 import { addRequests } from './requests.js'
-import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest, monoM3U8 } from '../test/hls-server-mock.js'
+import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest } from '../test/hls-server-mock.js'
 
 const mockConfig = {
   streamURL: 'http://localhost:8090/lb/premium80/index.m3u8',
@@ -13,38 +13,49 @@ const mockConfig = {
   }
 }
 
+const checkHeaders = () => {
+  const proxyReq = getCurrentRequest()
+  Object.entries(mockConfig.headers).forEach(([key, value]) => {
+    expect(proxyReq.get(key)).toBe(value)
+  })
+}
+
 describe('requests.js', () => {
   let app, hlsServer
 
   beforeAll(() => {
-    setEnableRedirects(false)
     hlsServer = hlsApp.listen(8090)
   })
 
   beforeEach(() => {
+    setEnableRedirects(false)
     app = express()
     addRequests(app, mockConfig)
   })
 
+  test('it should forward the http headers specified in the config file for all requests', async () => {
+    setEnableRedirects(true)
+    const req = request(app)
+    await req.get('/stream.m3u8').redirects(1).expect(200)
+    checkHeaders()
+    await req.get('/tracks-v1a1/mono.m3u8').expect(200)
+    checkHeaders()
+    await req.get('/key').expect(200)
+    checkHeaders()
+    await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+    checkHeaders()
+  })
+
   describe('main stream m3u8 file request', () => {
-    test('it should properly return proxied m3u8 file when requesting stream.m3u8', () => {
-      return request(app)
-        .get('/stream.m3u8')
-        .expect(200)
-        .then(response => {
-          expect(response.text).toBe(playlistM3U8)
-        })
+    test('it should properly return proxied m3u8 file when requesting stream.m3u8', async () => {
+      const response = await request(app).get('/stream.m3u8').expect(200)
+      expect(response.text).toBe(playlistM3U8)
     })
 
-    test('it should properly return proxied m3u8 file when requesting stream.m3u8 through HTTP redirect', () => {
+    test('it should properly return proxied m3u8 file when requesting stream.m3u8 through HTTP redirect', async () => {
       setEnableRedirects(true)
-      return request(app)
-        .get('/stream.m3u8')
-        .redirects(1)
-        .expect(200)
-        .then(response => {
-          expect(response.text).toBe(playlistM3U8)
-        })
+      const response = await request(app).get('/stream.m3u8').redirects(1).expect(200)
+      expect(response.text).toBe(playlistM3U8)
     })
   })
 
@@ -56,12 +67,9 @@ describe('requests.js', () => {
       return req.get('/stream.m3u8').redirects(1)
     })
 
-    it('should properly return proxied m3u8 child playlist files correctly and replace EXT-X-KEY URL with proxied /key path', () => {
-      return req
-        .get('/tracks-v1a1/mono.m3u8')
-        .expect(200)
-        .then(response => {
-          expect(response.text).toMatchInlineSnapshot(`
+    it('should properly return proxied m3u8 child playlist files correctly and replace EXT-X-KEY URL with proxied /key path', async () => {
+      const response = await req.get('/tracks-v1a1/mono.m3u8').expect(200)
+      expect(response.text).toMatchInlineSnapshot(`
 "#EXTM3U
 #EXT-X-TARGETDURATION:5
 #EXT-X-VERSION:3
@@ -82,7 +90,6 @@ describe('requests.js', () => {
 2024/08/11/13/23/57-04800.ts
 "
 `)
-        })
     })
   })
 
@@ -94,17 +101,30 @@ describe('requests.js', () => {
       return req.get('/stream.m3u8').redirects(1)
     })
 
-    it('should proxy the key URL thorugh the /key path', () => {
-      return req
-        .get('/tracks-v1a1/mono.m3u8')
-        .then(() => {
-          return req
-            .get('/key')
-            .expect(200)
-            .then(response => {
-              expect(Buffer.from(response.body).toString()).toBe('password')
-            })
-        })
+    it('should proxy the key URL thorugh the /key path', async () => {
+      await req.get('/tracks-v1a1/mono.m3u8')
+      const response = await req.get('/key').expect(200)
+      expect(Buffer.from(response.body).toString()).toBe('password')
+    })
+  })
+
+  describe('HLS transport stream video files', () => {
+    let req
+    beforeEach(async () => {
+      setEnableRedirects(true)
+      req = request(app)
+      await req.get('/stream.m3u8').redirects(1).expect(200)
+      checkHeaders()
+      await req.get('/tracks-v1a1/mono.m3u8').expect(200)
+      checkHeaders()
+      await req.get('/key').expect(200)
+    })
+
+    it('should proxy the transport stream files properly', async () => {
+      let response = await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+      expect(response.text).toBe('33-04800.ts')
+      response = await req.get('/tracks-v1a1/2024/08/11/13/23/43-04800.ts').redirects(1).expect(200)
+      expect(response.text).toBe('43-04800.ts')
     })
   })
 

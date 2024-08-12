@@ -61,40 +61,52 @@ app.get('/ddh1/premium80/tracks-v1a1/mono.m3u8', (req, res) => {
   res.send(monoM3U8)
 })
 
-app.get('/wmsxx.php?name=premium80&number=1', (req, res) => {
-  res.type('application/octet-stream')
-  res.send(Buffer.from('password'))
-})
-
 app.get('/wmsxx.php', (req, res) => {
-  res.type('application/octet-stream')
-  res.send(Buffer.from('password'))
+  if (req.query.name === 'premium80' && req.query.number === '1') {
+    res.type('application/octet-stream')
+    res.send(Buffer.from('password'))
+  } else {
+    res.status(403)
+    res.send()
+  }
 })
 
 app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/33-04800.ts', (req, res) => {
   if (enableRedirects) {
     res.status(301)
     res.location('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/33-04800.jpg?token=c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR')
+    res.send()
   } else {
     res.type('application/javascript')
     res.send('33-04800.ts')
   }
 })
-app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/33-04800.jpg?token=c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR', (req, res) => {
-  res.type('application/javascript')
-  res.send('33-04800.ts')
+app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/33-04800.jpg', (req, res) => {
+  if (req.query.token === 'c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR') {
+    res.type('application/javascript')
+    res.send('33-04800.ts')
+  } else {
+    res.status(403)
+    res.send()
+  }
 })
 
 app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/43-04800.ts', (req, res) => {
   if (enableRedirects) {
     res.status(301)
     res.location('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/43-04800.xls?token=c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR')
+    res.send()
   } else {
     res.type('application/javascript')
     res.send('43-04800.ts')
   }
 })
-app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/43-04800.xls?token=c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR', (req, res) => {
-  res.type('application/javascript')
-  res.send('43-04800.ts')
+app.get('/ddh1/premium80/tracks-v1a1/2024/08/11/13/23/43-04800.xls', (req, res) => {
+  if (req.query.token === 'c2VydmVyX3RpbWU9MTcxNDMyNzU2MyZoYXNoX3ZhbHVlPU5EQmlObUV3TldZek1tUmhNemMwWkRJM09URXdaREU0TTJZMU9EQmhNR') {
+    res.type('application/javascript')
+    res.send('43-04800.ts')
+  } else {
+    res.status(403)
+    res.send()
+  }
 })

@@ -5,6 +5,7 @@ import { addRequests } from './src/proxy/requests.js'
 const app = express()
 
 const config = {
+  enableLogging: true,
   streamURL: 'https://rbmn-live.akamaized.net/hls/live/657156/geoBlockPadel240601PadCcMultiPri/master_6500.m3u8',
   headers: {
     Origin: 'https://www.redbull.com',
