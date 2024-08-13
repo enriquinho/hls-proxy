@@ -4,6 +4,7 @@ import type { IncomingMessage } from 'node:http'
 
 import { Parser } from 'm3u8-parser'
 
+import type { HLSProxyConfig } from '../config'
 import { processPlaylistAndReplaceKey } from './key'
 import { getProxyRedirectUrl, getURLFromRedirectUrl } from './redirect'
 
@@ -20,7 +21,7 @@ export const userResDecorator:ProxyOptions['userResDecorator'] = (proxyRes, prox
   return proxyResData
 }
 
-export const userResDecoratorForPlaylists: (config:any) => ProxyOptions['userResDecorator'] = 
+export const userResDecoratorForPlaylists: (config:HLSProxyConfig) => ProxyOptions['userResDecorator'] = 
   config => (proxyRes, proxyResData, userReq, userRes) => {
     checkForError(proxyRes, proxyResData, userReq, userRes)
     const data = proxyResData.toString('utf8')
@@ -48,7 +49,7 @@ export const userResDecoratorFromRedirect: (setFinalStreamURL: (url: string) => 
   return proxyResData
 }
 
-export const getProxyReqOptDecorator: (config:any) => ProxyOptions['proxyReqOptDecorator']  = (config) => (proxyReqOpts, srcReq) => {
+export const getProxyReqOptDecorator: (config:HLSProxyConfig) => ProxyOptions['proxyReqOptDecorator']  = (config) => (proxyReqOpts, srcReq) => {
   const headers = proxyReqOpts.headers
 
   if (!headers) return proxyReqOpts
@@ -60,8 +61,8 @@ export const getProxyReqOptDecorator: (config:any) => ProxyOptions['proxyReqOptD
     'Accept': '*/*',
   }, config.headers)
 
-  if (config.interceptProxyRequest) {
-    config.interceptProxyRequest(proxyReqOpts)
+  if (config.interceptProxyReqOpt) {
+    config.interceptProxyReqOpt(proxyReqOpts)
   }
 
   return proxyReqOpts

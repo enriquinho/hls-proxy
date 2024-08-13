@@ -5,9 +5,10 @@ import type TestAgent from 'supertest/lib/agent'
 
 import { addRequests } from './requests'
 import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest } from '../test/hls-server-mock'
+import type{ HLSProxyConfig } from '../config'
 
 
-const mockConfig = {
+const mockConfig: HLSProxyConfig = {
   streamURL: 'http://localhost:8090/lb/premium80/index.m3u8',
   headers: {
     Origin: 'http://hls-server.xyz',
@@ -18,9 +19,12 @@ const mockConfig = {
 
 const checkHeaders = () => {
   const proxyReq = getCurrentRequest()
-  Object.entries(mockConfig.headers).forEach(([key, value]) => {
-    expect(proxyReq.get(key)).toBe(value)
-  })
+  if (mockConfig.headers) {
+    Object.entries(mockConfig.headers).forEach(([key, value]) => {
+      expect(proxyReq.get(key)).toBe(value)
+    })
+  }
+ 
 }
 
 describe('requests.js', () => {
