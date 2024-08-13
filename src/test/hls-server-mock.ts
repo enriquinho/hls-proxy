@@ -1,9 +1,9 @@
-import express from 'express'
+import express, { Request } from 'express'
 
 let enableRedirects = false
-export const setEnableRedirects = (redirect) => enableRedirects = redirect
+export const setEnableRedirects = (redirect: boolean) => enableRedirects = redirect
 
-let currentRequest
+let currentRequest: Request
 export const getCurrentRequest = () => currentRequest
 
 export const playlistM3U8 =

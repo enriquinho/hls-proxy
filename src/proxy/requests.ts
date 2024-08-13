@@ -1,22 +1,26 @@
-import proxy from 'express-http-proxy'
-import { getKeyUri } from './key.js'
-import { getURLFromRedirectUrl } from './redirect.js'
+import type { Application } from 'express'
+import proxy, { ProxyOptions } from 'express-http-proxy'
+
+import { getKeyUri } from './key'
+import { getURLFromRedirectUrl } from './redirect'
 import {
   userResDecorator,
   userResHeaderDecorator,
   userResDecoratorForPlaylists,
   userResDecoratorFromRedirect,
   getProxyReqOptDecorator
-} from './request-decorators.js'
+} from './request-decorators'
 
 const isUUIDPathExp = /^\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i
 
-const getBasePath = playlistURL => playlistURL.replace(/\/(\w|\.)+$/, '')
 
-export const addRequests = (app, config) => {
+getKeyUri
+const getBasePath = (playlistURL:string) => playlistURL.replace(/\/(\w|\.)+$/, '')
+
+export const addRequests = (app: Application, config: any) => {
   const { enableLogging, streamURL } = config
 
-  const doRedirect = (proxyURL, realURL) => {
+  const doRedirect = (proxyURL: string, realURL: string) => {
     if (enableLogging) {
       console.log(`${proxyURL} => ${realURL}`)
     }
@@ -24,10 +28,10 @@ export const addRequests = (app, config) => {
   }
 
   let finalStreamURL = streamURL
-  const setFinalStreamURL = (url) => finalStreamURL = url
+  const setFinalStreamURL = (url: string) => finalStreamURL = url
 
   const proxyReqOptDecorator = getProxyReqOptDecorator(config)
-  const proxyReqFinalPathResolver = (req) => {
+  const proxyReqFinalPathResolver: ProxyOptions['proxyReqPathResolver'] = (req) => {
     return new URL(getBasePath(finalStreamURL)).pathname + req.url
   }
 

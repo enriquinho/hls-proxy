@@ -1,12 +1,12 @@
 import { Parser } from 'm3u8-parser'
 
-let keyUri = null
+let keyUri:string = ''
 
-export const processPlaylistAndReplaceKey = (playlistData, config) => {
+export const processPlaylistAndReplaceKey = (playlistData: string, config: any) => {
   const parser = new Parser()
   parser.push(playlistData)
   parser.end()
-  keyUri = parser.manifest.segments?.[0]?.key?.uri || null
+  keyUri = parser.manifest.segments?.[0]?.key?.uri || ''
 
   if (keyUri) {
     const updatedPlayListData = playlistData.replace(keyUri, '/key')

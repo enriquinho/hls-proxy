@@ -1,8 +1,11 @@
-import express from 'express'
+import express, { Application } from 'express'
+import type { Server } from 'node:http'
 import request from 'supertest'
+import type TestAgent from 'supertest/lib/agent'
 
-import { addRequests } from './requests.js'
-import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest } from '../test/hls-server-mock.js'
+import { addRequests } from './requests'
+import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest } from '../test/hls-server-mock'
+
 
 const mockConfig = {
   streamURL: 'http://localhost:8090/lb/premium80/index.m3u8',
@@ -21,7 +24,7 @@ const checkHeaders = () => {
 }
 
 describe('requests.js', () => {
-  let app, hlsServer
+  let app: Application, hlsServer: Server
 
   beforeAll(() => {
     hlsServer = hlsApp.listen(8090)
@@ -44,6 +47,7 @@ describe('requests.js', () => {
     checkHeaders()
     await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
     checkHeaders()
+    expect.assertions(12)
   })
 
   describe('main stream m3u8 file request', () => {
@@ -60,7 +64,7 @@ describe('requests.js', () => {
   })
 
   describe('child playlist m3u8 file requests', () => {
-    let req
+    let req: TestAgent
     beforeEach(() => {
       setEnableRedirects(true)
       req = request(app)
@@ -94,7 +98,7 @@ describe('requests.js', () => {
   })
 
   describe('HLS encoding key URI proxying', () => {
-    let req
+    let req: TestAgent
     beforeEach(() => {
       setEnableRedirects(true)
       req = request(app)
@@ -109,7 +113,7 @@ describe('requests.js', () => {
   })
 
   describe('HLS transport stream video files', () => {
-    let req
+    let req: TestAgent
     beforeEach(async () => {
       setEnableRedirects(true)
       req = request(app)
