@@ -6,7 +6,7 @@ I've been using it myself in order to play HLS streams with [`ffplay`](https://w
 It can also be used to serve a HLS stream in your local network and play it from a smart TV player app, such as [SS IPTV](https://gb.lgappstv.com/main/tvapp/detail?appId=339090) that I use for my LG TV.
 
 ## Features
-- Allows sending custom HTTP headers to the HLS server by setting the `headers` property in the config on `index.ts`
+- Allows sending custom HTTP headers to the HLS server to bypass cross origin checks
 - Supports HTTP redirects returned by the HLS server
 - Supports HLS encryption through proxying the URI in EXT-X-KEY
 

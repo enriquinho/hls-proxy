@@ -8,9 +8,8 @@ import type { HLSProxyConfig } from '../config'
 import { processPlaylistAndReplaceKey } from './key'
 import { getProxyRedirectUrl, getURLFromRedirectUrl } from './redirect'
 
-
 const checkForError = (res: IncomingMessage, resData: any, userReq: Request, userRes: Response) => {
-  const isError = String(res.statusCode).startsWith('40')
+  const isError = res.statusCode && res.statusCode >= 400 
   if (isError) {
     console.error(resData.toString('utf8'))
   }
