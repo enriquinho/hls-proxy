@@ -8,13 +8,13 @@ It can also be used to serve a HLS stream in your local network and play it from
 ## Features
 - Allows sending custom HTTP headers to the HLS server by setting the `headers` property in the config on `index.ts`
 - Supports HTTP redirects returned by the HLS server
-- Supports HLS encryption through proxying the URI in EXT-X-KEY m3u8 file
+- Supports HLS encryption through proxying the URI in EXT-X-KEY
 
 ## How to use it
 
 ### Getting started
 - Install dependencies by running `npm i`
-- Edit the `config.ts` file: 
+- Edit the config in [index.ts](./index.ts) file: 
   - Change the `streamURL` to the target m3u8 stream you want to proxy
   - Likely stream will be restricted to be played only on some websites, edit the `Origin` and `Referer` URLs to match the target website
 - Run `npm run start`
