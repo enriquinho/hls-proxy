@@ -6,6 +6,12 @@ export const setEnableRedirects = (redirect: boolean) => enableRedirects = redir
 let currentRequest: Request
 export const getCurrentRequest = () => currentRequest
 
+let requestCounters: Record<string, number> = {}
+export const getRequestCounters = () => requestCounters
+export const resetRequestCounters = () => {
+  requestCounters = {}
+}
+
 export const playlistM3U8 =
   `#EXTM3U
 #EXT-X-STREAM-INF:AVERAGE-BANDWIDTH=2560000,BANDWIDTH=3210000,RESOLUTION=1280x720,FRAME-RATE=30.000,CODECS="avc1.64001f,mp4a.40.2",CLOSED-CAPTIONS=NONE
@@ -37,6 +43,11 @@ export const app = express()
 
 app.use((req, res, next) => {
   currentRequest = req
+  if (!requestCounters[req.url]) {
+    requestCounters[req.url] = 1
+  } else {
+    requestCounters[req.url]++
+  }
   next()
 })
 

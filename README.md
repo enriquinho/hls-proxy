@@ -9,6 +9,7 @@ It can also be used to serve a HLS stream in your local network and play it from
 - Allows sending custom HTTP headers to the HLS server to bypass cross origin checks
 - Supports HTTP redirects returned by the HLS server
 - Supports HLS encryption through proxying the URI in EXT-X-KEY
+- Supports caching to reduce requests when several players are playing the stream
 
 ## How to use it
 

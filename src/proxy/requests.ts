@@ -1,6 +1,8 @@
 import type { Application } from 'express'
 import proxy, { ProxyOptions } from 'express-http-proxy'
 
+import { getConfig } from '../config'
+import { cacheMiddleware, withCache, withRedirectCache } from './cache'
 import { getKeyUri } from './key'
 import { getURLFromRedirectUrl } from './redirect'
 import {
@@ -10,16 +12,21 @@ import {
   userResDecoratorFromRedirect,
   getProxyReqOptDecorator
 } from './request-decorators'
-import type { HLSProxyConfig } from '../config'
 
 const isUUIDPathExp = /^\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i
 
-const getBasePath = (playlistURL:string) => playlistURL.replace(/\/(\w|\.)+$/, '')
+const getBasePath = (playlistURL: string) => playlistURL.replace(/\/(\w|\.)+$/, '')
 
-export const addRequests = (app: Application, config: HLSProxyConfig) => {
-  const { enableLogging, streamURL } = config
+export const addRequests = (app: Application) => {
+  const config = getConfig()
+  if (config === null) {
+    throw new Error('Config not found')
+  }
 
-  const doRedirect = (proxyURL: string, realURL: string) => {
+  const { enableLogging, streamURL, cache } = config
+  const playlistTTL = cache.playlists
+
+  const doProxy = (proxyURL: string, realURL: string) => {
     if (enableLogging) {
       console.log(`${proxyURL} => ${realURL}`)
     }
@@ -29,67 +36,60 @@ export const addRequests = (app: Application, config: HLSProxyConfig) => {
   let finalStreamURL = streamURL
   const setFinalStreamURL = (url: string) => finalStreamURL = url
 
-  const proxyReqOptDecorator = getProxyReqOptDecorator(config)
+  const proxyReqOptDecorator = getProxyReqOptDecorator
   const proxyReqFinalPathResolver: ProxyOptions['proxyReqPathResolver'] = (req) => {
     return new URL(getBasePath(finalStreamURL)).pathname + req.url
   }
 
-  app.get('/stream.m3u8', proxy(req => {
-    return doRedirect(req.url, streamURL)
+  app.get('/stream.m3u8', cacheMiddleware, proxy(req => {
+    return doProxy(req.url, streamURL)
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: (req) => new URL(config.streamURL).pathname,
-    userResDecorator: userResDecoratorForPlaylists(config),
-    userResHeaderDecorator
+    userResDecorator: withCache(userResDecoratorForPlaylists, playlistTTL),
+    userResHeaderDecorator: withRedirectCache(userResHeaderDecorator, playlistTTL)
   }))
 
   app.get('/key', proxy(req => {
-    return doRedirect(req.url, getKeyUri())
+    return doProxy(req.url, getKeyUri())
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: (req) => {
       const uri = new URL(getKeyUri())
+      //TODO: keyUri fails when caching /.*\.m3u8$/ playlist
       return uri.pathname + uri.search
     },
     userResDecorator
   }))
 
-  app.get(/.*\.ts$/, proxy((req) => {
-    return doRedirect(req.url, getBasePath(finalStreamURL) + req.url)
+  app.get(/.*\.ts$/, cacheMiddleware, proxy((req) => {
+    return doProxy(req.url, getBasePath(finalStreamURL) + req.url)
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: proxyReqFinalPathResolver,
-    userResHeaderDecorator
+    userResDecorator: withCache(userResDecorator),
+    userResHeaderDecorator: withRedirectCache(userResHeaderDecorator)
   }))
 
-  app.get(isUUIDPathExp, proxy((req) => {
-    return doRedirect(req.url, getURLFromRedirectUrl(req.url))
+  app.get(isUUIDPathExp, cacheMiddleware, proxy((req) => {
+    return doProxy(req.url, getURLFromRedirectUrl(req.url))
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: (req) => {
       const uri = new URL(getURLFromRedirectUrl(req.url))
       return uri.pathname + uri.search
     },
-    userResDecorator: userResDecoratorFromRedirect(setFinalStreamURL),
+    userResDecorator: withCache(userResDecoratorFromRedirect(setFinalStreamURL)),
   }))
 
   //handles child m3u8 playlists
   app.get(/.*\.m3u8$/, proxy((req) => {
-    return doRedirect(req.url, getBasePath(finalStreamURL) + req.url)
+    return doProxy(req.url, getBasePath(finalStreamURL) + req.url)
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: proxyReqFinalPathResolver,
-    userResDecorator: userResDecoratorForPlaylists(config),
-    userResHeaderDecorator
-  }))
-
-  app.get('*', proxy((req) => {
-    return doRedirect(req.url, getBasePath(finalStreamURL) + req.url)
-  }, {
-    proxyReqOptDecorator,
-    proxyReqPathResolver: proxyReqFinalPathResolver,
-    userResDecorator,
-    userResHeaderDecorator
+    userResDecorator: withCache(userResDecoratorForPlaylists, playlistTTL),
+    userResHeaderDecorator: withRedirectCache(userResHeaderDecorator, playlistTTL)
   }))
 
 }

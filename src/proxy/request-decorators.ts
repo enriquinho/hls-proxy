@@ -4,28 +4,29 @@ import type { IncomingMessage } from 'node:http'
 
 import { Parser } from 'm3u8-parser'
 
-import type { HLSProxyConfig } from '../config'
+import { getConfig } from '../config'
 import { processPlaylistAndReplaceKey } from './key'
 import { getProxyRedirectUrl, getURLFromRedirectUrl } from './redirect'
 
 const checkForError = (res: IncomingMessage, resData: any, userReq: Request, userRes: Response) => {
-  const isError = res.statusCode && res.statusCode >= 400 
+  const isError = res.statusCode && res.statusCode >= 400
   if (isError) {
     console.error(resData.toString('utf8'))
   }
 }
 
-export const userResDecorator:ProxyOptions['userResDecorator'] = (proxyRes, proxyResData, userReq, userRes) => {
+export const userResDecorator: ProxyOptions['userResDecorator'] = (proxyRes, proxyResData, userReq, userRes) => {
   checkForError(proxyRes, proxyResData, userReq, userRes)
   return proxyResData
 }
 
-export const userResDecoratorForPlaylists: (config:HLSProxyConfig) => ProxyOptions['userResDecorator'] = 
-  config => (proxyRes, proxyResData, userReq, userRes) => {
+export const userResDecoratorForPlaylists: ProxyOptions['userResDecorator'] =
+  (proxyRes, proxyResData, userReq, userRes) => {
+    const config = getConfig()
     checkForError(proxyRes, proxyResData, userReq, userRes)
     const data = proxyResData.toString('utf8')
     return processPlaylistAndReplaceKey(data, config)
-}
+  }
 
 const hasPlaylistChildren = (playlistData: string) => {
   const parser = new Parser()
@@ -35,20 +36,20 @@ const hasPlaylistChildren = (playlistData: string) => {
   return childStream && /.*\.m3u8$/.test(childStream)
 }
 
-export const userResDecoratorFromRedirect: (setFinalStreamURL: (url: string) => void) => ProxyOptions['userResDecorator'] = 
-(setFinalStreamURL) => (proxyRes, proxyResData, userReq, userRes) => {
-  checkForError(proxyRes, proxyResData, userReq, userRes)
-  const url = getURLFromRedirectUrl(userReq.url)
-  if (/.*\.m3u8$/.test(url)) {
-    const data = proxyResData.toString('utf8')
-    if (hasPlaylistChildren(data)) {
-      setFinalStreamURL(url)
+export const userResDecoratorFromRedirect: (setFinalStreamURL: (url: string) => void) => ProxyOptions['userResDecorator'] =
+  (setFinalStreamURL) => (proxyRes, proxyResData, userReq, userRes) => {
+    checkForError(proxyRes, proxyResData, userReq, userRes)
+    const url = getURLFromRedirectUrl(userReq.url)
+    if (/.*\.m3u8$/.test(url)) {
+      const data = proxyResData.toString('utf8')
+      if (hasPlaylistChildren(data)) {
+        setFinalStreamURL(url)
+      }
     }
+    return proxyResData
   }
-  return proxyResData
-}
 
-export const getProxyReqOptDecorator: (config:HLSProxyConfig) => ProxyOptions['proxyReqOptDecorator']  = (config) => (proxyReqOpts, srcReq) => {
+export const getProxyReqOptDecorator: ProxyOptions['proxyReqOptDecorator'] = (proxyReqOpts, srcReq) => {
   const headers = proxyReqOpts.headers
 
   if (!headers) return proxyReqOpts
@@ -56,12 +57,16 @@ export const getProxyReqOptDecorator: (config:HLSProxyConfig) => ProxyOptions['p
   for (let header in headers) {
     delete headers[header]
   }
-  Object.assign(headers, {
-    'Accept': '*/*',
-  }, config.headers)
 
-  if (config.interceptProxyReqOpt) {
-    config.interceptProxyReqOpt(proxyReqOpts)
+  const config = getConfig()
+  if (config) {
+    Object.assign(headers, {
+      'Accept': '*/*',
+    }, config.headers)
+
+    if (config.interceptProxyReqOpt) {
+      config.interceptProxyReqOpt(proxyReqOpts)
+    }
   }
 
   return proxyReqOpts

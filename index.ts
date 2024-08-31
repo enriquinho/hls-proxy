@@ -1,19 +1,26 @@
+import fs from 'node:fs'
 import express from 'express'
 
 import { addRequests } from './src/proxy/requests.js'
+import { setConfig } from './src/config.js'
 
 const app = express()
 
 const config = {
-  enableLogging: true,
-  streamURL: 'https://rbmn-live.akamaized.net/hls/live/657156/geoBlockPadel240601PadCcMultiPri/master_6500.m3u8',
+  streamURL: '',
   headers: {
-    Origin: 'https://www.redbull.com',
-    Referer: 'https://www.redbull.com/',
-    'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    Origin: '',
+    Referer: ''
   }
 }
 
-addRequests(app, config)
+const player = fs.readFileSync('./player.html')
+app.get('/player.html', (req, res) => {
+  res.contentType('html')
+  res.send(player)
+})
 
-app.listen(8088)
+const fullConfig = setConfig(config)
+addRequests(app)
+
+app.listen(fullConfig.port)

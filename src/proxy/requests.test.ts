@@ -4,16 +4,21 @@ import request from 'supertest'
 import type TestAgent from 'supertest/lib/agent'
 
 import { addRequests } from './requests'
-import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest } from '../test/hls-server-mock'
-import type{ HLSProxyConfig } from '../config'
+import { app as hlsApp, playlistM3U8, setEnableRedirects, getCurrentRequest, getRequestCounters, resetRequestCounters } from '../test/hls-server-mock'
+import { setConfig } from '../config'
+import { clearCache } from './cache'
 
 
-const mockConfig: HLSProxyConfig = {
+const mockConfig = {
   streamURL: 'http://localhost:8090/lb/premium80/index.m3u8',
   headers: {
     Origin: 'http://hls-server.xyz',
     Referer: 'http://hls-server.xyz/',
     'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+  },
+  cache: {
+    playlists: 1,
+    default: 2
   }
 }
 
@@ -24,7 +29,7 @@ const checkHeaders = () => {
       expect(proxyReq.get(key)).toBe(value)
     })
   }
- 
+
 }
 
 describe('requests.js', () => {
@@ -35,9 +40,12 @@ describe('requests.js', () => {
   })
 
   beforeEach(() => {
+    resetRequestCounters()
     setEnableRedirects(false)
     app = express()
-    addRequests(app, mockConfig)
+    setConfig(mockConfig)
+    clearCache()
+    addRequests(app)
   })
 
   test('it should forward the http headers specified in the config file for all requests', async () => {
@@ -133,6 +141,42 @@ describe('requests.js', () => {
       expect(response.text).toBe('33-04800.ts')
       response = await req.get('/tracks-v1a1/2024/08/11/13/23/43-04800.ts').redirects(1).expect(200)
       expect(response.text).toBe('43-04800.ts')
+    })
+  })
+
+  describe('caching', () => {
+    beforeEach(() => {
+      setEnableRedirects(true)
+    })
+
+    it('should cache requests for the main playlist until the provided time in config', async () => {
+      const req = request(app)
+      const response1 = await req.get('/stream.m3u8').redirects(1).expect(200)
+      const response2 = await req.get('/stream.m3u8').redirects(1).expect(200)
+      const response3 = await req.get('/stream.m3u8').redirects(1).expect(200)
+      expect(response1.text).toBe(playlistM3U8)
+      expect(response2.text).toBe(playlistM3U8)
+      expect(response3.text).toBe(playlistM3U8)
+      expect(Object.values(getRequestCounters())).toEqual([1, 1])
+      await new Promise(resolve => setTimeout(() => resolve(true), mockConfig.cache.playlists * 1000))
+      await req.get('/stream.m3u8').redirects(1).expect(200)
+      expect(Object.values(getRequestCounters())).toEqual([2, 2])
+    })
+
+    it('should cache requests for the main ts files until the provided time in config', async () => {
+      const req = request(app)
+      await req.get('/stream.m3u8').redirects(1).expect(200)
+      await req.get('/tracks-v1a1/mono.m3u8').expect(200)
+      await req.get('/key').expect(200)
+      resetRequestCounters()
+      const response1 = await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+      const response2 = await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+      expect(Object.values(getRequestCounters())).toEqual([1, 1])
+      expect(response1.text).toBe('33-04800.ts')
+      expect(response2.text).toBe('33-04800.ts')
+      await new Promise(resolve => setTimeout(() => resolve(true), mockConfig.cache.default * 1000))
+      await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+      expect(Object.values(getRequestCounters())).toEqual([2, 2])
     })
   })
 
