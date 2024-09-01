@@ -20,7 +20,9 @@ const DEFAULT_CONFIG: Omit<HLSProxyConfig, 'streamURL'> = {
 export const getConfig = () => _config
 
 type AtLeast<T, K extends keyof T> = Partial<T> & Pick<T, K>
-export const setConfig = (config: AtLeast<HLSProxyConfig, 'streamURL'>) => {
+export type InitialConfig = AtLeast<HLSProxyConfig, 'streamURL'>
+
+export const setConfig = (config: InitialConfig) => {
   _config = defaultsDeep(config, DEFAULT_CONFIG)
   initCache()
   return _config

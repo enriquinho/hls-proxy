@@ -50,12 +50,12 @@ export const addRequests = (app: Application) => {
     userResHeaderDecorator: withRedirectCache(userResHeaderDecorator, playlistTTL)
   }))
 
-  app.get('/key', proxy(req => {
-    return doProxy(req.url, getKeyUri())
+  app.get('/key/:id', proxy(req => {
+    return doProxy(req.url, getKeyUri(req.params.id))
   }, {
     proxyReqOptDecorator,
     proxyReqPathResolver: (req) => {
-      const uri = new URL(getKeyUri())
+      const uri = new URL(getKeyUri(req.params.id))
       //TODO: keyUri fails when caching /.*\.m3u8$/ playlist
       return uri.pathname + uri.search
     },

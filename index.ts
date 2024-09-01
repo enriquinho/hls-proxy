@@ -2,11 +2,12 @@ import fs from 'node:fs'
 import express from 'express'
 
 import { addRequests } from './src/proxy/requests.js'
-import { setConfig } from './src/config.js'
+import { setConfig, type InitialConfig } from './src/config.js'
 
 const app = express()
 
-const config = {
+const config: InitialConfig = {
+  enableLogging: true,
   streamURL: '',
   headers: {
     Origin: '',

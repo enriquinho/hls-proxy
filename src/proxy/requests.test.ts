@@ -32,7 +32,7 @@ const checkHeaders = () => {
 
 }
 
-describe('requests.js', () => {
+describe('requests.ts', () => {
   let app: Application, hlsServer: Server
 
   beforeAll(() => {
@@ -55,7 +55,7 @@ describe('requests.js', () => {
     checkHeaders()
     await req.get('/tracks-v1a1/mono.m3u8').expect(200)
     checkHeaders()
-    await req.get('/key').expect(200)
+    await req.get('/key/0').expect(200)
     checkHeaders()
     await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
     checkHeaders()
@@ -91,7 +91,7 @@ describe('requests.js', () => {
 #EXT-X-VERSION:3
 #EXT-X-MEDIA-SEQUENCE:22023
 #EXT-X-PROGRAM-DATE-TIME:2024-08-11T13:23:33.945Z
-#EXT-X-KEY:METHOD=AES-128,IV=0x30303030303030303030303066b8992e,URI="/key",KEYFORMAT="identity"
+#EXT-X-KEY:METHOD=AES-128,IV=0x30303030303030303030303066b8992e,URI="/key/0",KEYFORMAT="identity"
 #EXTINF:4.800,
 2024/08/11/13/23/33-04800.ts
 #EXTINF:4.800,
@@ -119,7 +119,7 @@ describe('requests.js', () => {
 
     it('should proxy the key URL thorugh the /key path', async () => {
       await req.get('/tracks-v1a1/mono.m3u8')
-      const response = await req.get('/key').expect(200)
+      const response = await req.get('/key/0').expect(200)
       expect(Buffer.from(response.body).toString()).toBe('password')
     })
   })
@@ -133,7 +133,7 @@ describe('requests.js', () => {
       checkHeaders()
       await req.get('/tracks-v1a1/mono.m3u8').expect(200)
       checkHeaders()
-      await req.get('/key').expect(200)
+      await req.get('/key/0').expect(200)
     })
 
     it('should proxy the transport stream files properly', async () => {
@@ -167,14 +167,15 @@ describe('requests.js', () => {
       const req = request(app)
       await req.get('/stream.m3u8').redirects(1).expect(200)
       await req.get('/tracks-v1a1/mono.m3u8').expect(200)
-      await req.get('/key').expect(200)
+      await req.get('/key/0').expect(200)
       resetRequestCounters()
       const response1 = await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
+      await new Promise(resolve => setTimeout(() => resolve(true), mockConfig.cache.default / 2 * 1000))
       const response2 = await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
       expect(Object.values(getRequestCounters())).toEqual([1, 1])
       expect(response1.text).toBe('33-04800.ts')
       expect(response2.text).toBe('33-04800.ts')
-      await new Promise(resolve => setTimeout(() => resolve(true), mockConfig.cache.default * 1000))
+      await new Promise(resolve => setTimeout(() => resolve(true), mockConfig.cache.default / 2 * 1000))
       await req.get('/tracks-v1a1/2024/08/11/13/23/33-04800.ts').redirects(1).expect(200)
       expect(Object.values(getRequestCounters())).toEqual([2, 2])
     })

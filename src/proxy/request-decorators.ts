@@ -49,13 +49,16 @@ export const userResDecoratorFromRedirect: (setFinalStreamURL: (url: string) => 
     return proxyResData
   }
 
+const FORWARDED_HEADERS = ['connection', 'range']
 export const getProxyReqOptDecorator: ProxyOptions['proxyReqOptDecorator'] = (proxyReqOpts, srcReq) => {
   const headers = proxyReqOpts.headers
 
   if (!headers) return proxyReqOpts
 
   for (let header in headers) {
-    delete headers[header]
+    if (!FORWARDED_HEADERS.includes(header.toLowerCase())) {
+      delete headers[header]
+    }
   }
 
   const config = getConfig()

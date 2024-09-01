@@ -57,6 +57,7 @@ export const withRedirectCache = (userResHeaderDecorator: ProxyOptions['userResH
   }
 
 export const cacheMiddleware: RequestHandler = (req, res, next) => {
+  const config = getConfig()
   const cached = cache.get<ProxyCacheEntry>(req.url)
   if (cached) {
     Object.entries(cached.headers).forEach(([key, value]) => {
@@ -68,7 +69,9 @@ export const cacheMiddleware: RequestHandler = (req, res, next) => {
       res.status(cached.statusCode)
     }
     res.send(cached.body)
-    console.log('(cache)', req.url, cached.statusCode)
+    if (config.enableLogging) {
+      console.log('(cache)', req.url, cached.statusCode)
+    }
   } else {
     next()
   }
