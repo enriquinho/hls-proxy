@@ -2,13 +2,20 @@ import type { Request, Response } from 'express'
 import type { ProxyOptions } from 'express-http-proxy'
 import type { IncomingMessage } from 'node:http'
 
-import { Parser } from 'm3u8-parser'
-
 import { getConfig } from '../config'
-import { processPlaylistAndReplaceKey } from './key'
-import { getProxyRedirectUrl, getURLFromRedirectUrl } from './redirect'
+import { processPlaylist } from './playlist'
+import { getIdFromUri, getUriFromId } from './uri-mapper'
 
-const checkForError = (res: IncomingMessage, resData: any, userReq: Request, userRes: Response) => {
+export interface IncomingMessageWithSource extends IncomingMessage {
+  source?: {
+    protocol: string
+    host: string
+    path: string
+    port?: number
+  }
+}
+
+const checkResponse = (res: IncomingMessage, resData: any, userReq: Request, userRes: Response) => {
   const isError = res.statusCode && res.statusCode >= 400
   if (isError) {
     console.error(resData.toString('utf8'))
@@ -16,41 +23,25 @@ const checkForError = (res: IncomingMessage, resData: any, userReq: Request, use
 }
 
 export const userResDecorator: ProxyOptions['userResDecorator'] = (proxyRes, proxyResData, userReq, userRes) => {
-  checkForError(proxyRes, proxyResData, userReq, userRes)
+  checkResponse(proxyRes, proxyResData, userReq, userRes)
   return proxyResData
 }
 
 export const userResDecoratorForPlaylists: ProxyOptions['userResDecorator'] =
-  (proxyRes, proxyResData, userReq, userRes) => {
-    const config = getConfig()
-    checkForError(proxyRes, proxyResData, userReq, userRes)
-    const data = proxyResData.toString('utf8')
-    return processPlaylistAndReplaceKey(data, config)
-  }
-
-const hasPlaylistChildren = (playlistData: string) => {
-  const parser = new Parser()
-  parser.push(playlistData)
-  parser.end()
-  const childStream = parser.manifest.playlists?.[0]?.uri
-  return childStream && /.*\.m3u8$/.test(childStream)
-}
-
-export const userResDecoratorFromRedirect: (setFinalStreamURL: (url: string) => void) => ProxyOptions['userResDecorator'] =
-  (setFinalStreamURL) => (proxyRes, proxyResData, userReq, userRes) => {
-    checkForError(proxyRes, proxyResData, userReq, userRes)
-    const url = getURLFromRedirectUrl(userReq.url)
-    if (/.*\.m3u8$/.test(url)) {
+  (proxyRes: IncomingMessageWithSource, proxyResData, userReq, userRes) => {
+    if (proxyRes.source) {
+      checkResponse(proxyRes, proxyResData, userReq, userRes)
       const data = proxyResData.toString('utf8')
-      if (hasPlaylistChildren(data)) {
-        setFinalStreamURL(url)
-      }
+
+      const { protocol, host, path, port } = proxyRes.source
+      return processPlaylist(data, `${protocol}//${host}${port ? `:${port}` : ''}${path}`)
+    } else {
+      throw new Error(`Unable to get proxy original url for: ${userReq.url}`)
     }
-    return proxyResData
   }
 
 const FORWARDED_HEADERS = ['connection', 'range']
-export const getProxyReqOptDecorator: ProxyOptions['proxyReqOptDecorator'] = (proxyReqOpts, srcReq) => {
+export const proxyReqOptDecorator: ProxyOptions['proxyReqOptDecorator'] = (proxyReqOpts, srcReq) => {
   const headers = proxyReqOpts.headers
 
   if (!headers) return proxyReqOpts
@@ -75,17 +66,25 @@ export const getProxyReqOptDecorator: ProxyOptions['proxyReqOptDecorator'] = (pr
   return proxyReqOpts
 }
 
-export const userResHeaderDecorator: ProxyOptions['userResHeaderDecorator'] = (headers, userReq, userRes, proxyReq, proxyRes) => {
+export const userResHeaderDecorator: ProxyOptions['userResHeaderDecorator'] = (headers, userReq, userRes, proxyReq, proxyRes: IncomingMessageWithSource) => {
+  const port = proxyReq.socket && proxyReq.socket.remotePort
+  const hasCustomPort = port && port !== 80 && port !== 443
+
+  const { protocol, host, path } = proxyReq
+  proxyRes.source = { protocol, host, path, port: hasCustomPort ? port : undefined }
+
   const isRedirect = String(proxyRes.statusCode).startsWith('30')
   let { location } = headers
   if (isRedirect && location) {
     if (location.startsWith('/')) {
       const { protocol, host } = proxyReq
-      const port = proxyReq.socket && proxyReq.socket.remotePort
-      const hasCustomPort = port && port !== 80 && port !== 443
       location = protocol + '//' + host + (hasCustomPort ? `:${port}` : '') + location
     }
-    headers.location = getProxyRedirectUrl(location)
+    if (location.endsWith('.m3u8')) {
+      headers.location = '/playlist/' + getIdFromUri(location)
+    } else {
+      headers.location = '/ts/' + getIdFromUri(location)
+    }
   }
   return headers
 }

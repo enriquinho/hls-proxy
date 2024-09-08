@@ -12,7 +12,7 @@ const DEFAULT_CONFIG: Omit<HLSProxyConfig, 'streamURL'> = {
   },
   port: 8088,
   cache: {
-    playlists: 5,
+    playlists: 1,
     default: 30
   }
 }

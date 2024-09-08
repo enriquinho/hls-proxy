@@ -20,7 +20,8 @@ It can also be used to serve a HLS stream in your local network and play it from
   - Likely stream will be restricted to be played only on some websites, edit the `Origin` and `Referer` URLs to match the target website
 - Run `npm run start`
 - Now your computer will be serving a new stream in `http://localhost:8088/stream.m3u8`
-- You can test it by installing [`ffplay`](https://www.ffmpeg.org/ffplay.html) and simply running `ffplay http://localhost:8088/stream.m3u8`
+- You can test it by opening the web player in the browser: `http://localhost:8088/player.html`
+- Alternatively, you can also install [`ffplay`](https://www.ffmpeg.org/ffplay.html) and play it by running `ffplay http://localhost:8088/stream.m3u8`
 
 ### Changing stream
 It's not supported to change a stream on the fly, if you want to change it you must stop the server, change the config file and start it again.

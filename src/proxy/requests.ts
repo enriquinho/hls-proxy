@@ -1,21 +1,15 @@
-import type { Application } from 'express'
+import type { Application, Request } from 'express'
 import proxy, { ProxyOptions } from 'express-http-proxy'
 
 import { getConfig } from '../config'
 import { cacheMiddleware, withCache, withRedirectCache } from './cache'
-import { getKeyUri } from './key'
-import { getURLFromRedirectUrl } from './redirect'
+import { getUriFromId } from './uri-mapper'
 import {
   userResDecorator,
   userResHeaderDecorator,
   userResDecoratorForPlaylists,
-  userResDecoratorFromRedirect,
-  getProxyReqOptDecorator
+  proxyReqOptDecorator
 } from './request-decorators'
-
-const isUUIDPathExp = /^\/(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000)$/i
-
-const getBasePath = (playlistURL: string) => playlistURL.replace(/\/(\w|\.)+$/, '')
 
 export const addRequests = (app: Application) => {
   const config = getConfig()
@@ -33,13 +27,11 @@ export const addRequests = (app: Application) => {
     return realURL
   }
 
-  let finalStreamURL = streamURL
-  const setFinalStreamURL = (url: string) => finalStreamURL = url
-
-  const proxyReqOptDecorator = getProxyReqOptDecorator
-  const proxyReqFinalPathResolver: ProxyOptions['proxyReqPathResolver'] = (req) => {
-    return new URL(getBasePath(finalStreamURL)).pathname + req.url
+  const proxyReqPathResolver: ProxyOptions['proxyReqPathResolver'] = (req) => {
+    const uri = new URL(getUriFromId(req.params.id))
+    return uri.pathname + uri.search
   }
+  const fromId = (req: Request) => doProxy(req.url, getUriFromId(req.params.id))
 
   app.get('/stream.m3u8', cacheMiddleware, proxy(req => {
     return doProxy(req.url, streamURL)
@@ -50,46 +42,23 @@ export const addRequests = (app: Application) => {
     userResHeaderDecorator: withRedirectCache(userResHeaderDecorator, playlistTTL)
   }))
 
-  app.get('/key/:id', proxy(req => {
-    return doProxy(req.url, getKeyUri(req.params.id))
-  }, {
+  app.get('/playlist/:id', cacheMiddleware, proxy(fromId, {
     proxyReqOptDecorator,
-    proxyReqPathResolver: (req) => {
-      const uri = new URL(getKeyUri(req.params.id))
-      //TODO: keyUri fails when caching /.*\.m3u8$/ playlist
-      return uri.pathname + uri.search
-    },
-    userResDecorator
-  }))
-
-  app.get(/.*\.ts$/, cacheMiddleware, proxy((req) => {
-    return doProxy(req.url, getBasePath(finalStreamURL) + req.url)
-  }, {
-    proxyReqOptDecorator,
-    proxyReqPathResolver: proxyReqFinalPathResolver,
-    userResDecorator: withCache(userResDecorator),
-    userResHeaderDecorator: withRedirectCache(userResHeaderDecorator)
-  }))
-
-  app.get(isUUIDPathExp, cacheMiddleware, proxy((req) => {
-    return doProxy(req.url, getURLFromRedirectUrl(req.url))
-  }, {
-    proxyReqOptDecorator,
-    proxyReqPathResolver: (req) => {
-      const uri = new URL(getURLFromRedirectUrl(req.url))
-      return uri.pathname + uri.search
-    },
-    userResDecorator: withCache(userResDecoratorFromRedirect(setFinalStreamURL)),
-  }))
-
-  //handles child m3u8 playlists
-  app.get(/.*\.m3u8$/, proxy((req) => {
-    return doProxy(req.url, getBasePath(finalStreamURL) + req.url)
-  }, {
-    proxyReqOptDecorator,
-    proxyReqPathResolver: proxyReqFinalPathResolver,
+    proxyReqPathResolver,
     userResDecorator: withCache(userResDecoratorForPlaylists, playlistTTL),
     userResHeaderDecorator: withRedirectCache(userResHeaderDecorator, playlistTTL)
   }))
 
+  app.get('/key/:id', proxy(fromId, {
+    proxyReqOptDecorator,
+    proxyReqPathResolver,
+    userResDecorator
+  }))
+
+  app.get('/ts/:id', cacheMiddleware, proxy(fromId, {
+    proxyReqOptDecorator,
+    proxyReqPathResolver,
+    userResDecorator: withCache(userResDecorator),
+    userResHeaderDecorator: withRedirectCache(userResHeaderDecorator)
+  }))
 }

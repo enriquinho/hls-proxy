@@ -7,7 +7,8 @@
   "scripts": {
     "start": "tsx index.ts",
     "dev": "tsx watch index.ts",
-    "test": "jest"
+    "test": "jest",
+    "test-debug-express": "set DEBUG=express-http-proxy && npm run test"
   },
   "engines": {
     "node": ">=20"
@@ -17,8 +18,8 @@
   "dependencies": {
     "express": "^4.18.2",
     "express-http-proxy": "^2.0.0",
+    "hls-parser": "^0.13.3",
     "lodash": "^4.17.21",
-    "m3u8-parser": "^7.1.0",
     "node-cache": "^5.1.2",
     "uuid": "^9.0.1"
   },
